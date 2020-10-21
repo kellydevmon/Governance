@@ -1,0 +1,5 @@
+.secret
+.secrets.js
+node_modules/
+build/
+cache/
