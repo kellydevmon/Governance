@@ -1,1 +1,1 @@
-# xpie-token
+# XpieToken - Native Token for Liberty Pie Project
