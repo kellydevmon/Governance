@@ -16,7 +16,7 @@ contract XpieToken is Context, ERC20PresetMinterPauser {
     constructor() public ERC20PresetMinterPauser(_tokenName,_tokenSymbol) {
         _setupDecimals(_tokenDecimal);
         uint _tokenTotalSupply = _tokenInitialSupply.mul(10 ** uint256(_tokenDecimal));
-        _mint(_owner, _tokenTotalSupply);
+        _mint(_msgSender(), _tokenTotalSupply);
     }
-
+    
 }
