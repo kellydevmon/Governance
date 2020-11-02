@@ -42,9 +42,7 @@ contract XpieToken is Context, ERC20PresetMinterPauser {
         );
     }
 
-    /**
-     * https://github.com/Uniswap/uniswap-v2-core/blob/master/contracts/UniswapV2ERC20.sol 
-     */
+
     function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
         
         require(deadline >= block.timestamp, 'EXPIRED');
