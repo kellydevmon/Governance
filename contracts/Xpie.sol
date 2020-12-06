@@ -20,16 +20,25 @@ contract Xpie is Context, ERC20PresetMinterPauser {
     string constant  _name = "LibertyPie";
     string  constant _symbol = "XPIE";
     uint256 constant _initialSupply = 990_000_000e18; // 990m
-    
-    string _version = "1";
 
     bytes32 public DOMAIN_SEPARATOR; 
 
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+    
+
+    // the total maximum supply which can be ever produced 
+    //uint256 _maxSupply;
+    
+    // the percentage of xpie which can be created per mint
+    //default to 0
+    uint _mintCap;
+    
+    string _version = "1";
+
     mapping(address => uint) public nonces;
 
-     /// @notice A record of each accounts delegate
+    /// @notice A record of each accounts delegate
     mapping (address => address) public delegates;
 
     /// @notice A checkpoint for marking number of votes from a given block
@@ -55,20 +64,22 @@ contract Xpie is Context, ERC20PresetMinterPauser {
         
         //uint _newSupply = _initialSupply.mul(uint256(10) ** uint256(decimals()));
         
+        //note: call mint before setting the mintCap and maxSupply
         mint(_msgSender(), _initialSupply);
 
-        uint chainId; 
 
-        assembly {
-            chainId := chainid()
-        }
-        
+        _mintCap = 2; // 2% of current supply
+
+        //maxSupply initially set to 100% of initial supply
+        //_maxSupply = _initialSupply * 2;
+
+    
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
                 keccak256(bytes(_name)),
                 keccak256(bytes(_version)),
-                chainId,
+                getChainId(),
                 address(this)
             )
         );
@@ -85,9 +96,28 @@ contract Xpie is Context, ERC20PresetMinterPauser {
      * - the caller must have the `MINTER_ROLE`.
      */
     function mint(address _to, uint256 _amount) public virtual  override {
+
+        //pre validations
+        // amount per mint must be respected
+        require(_mintCap > 0 && (_amount <= SafeMath.div(SafeMath.mul(totalSupply(), _mintCap), 100)), "Xpie::mint: exceeded mint cap");
+
+        //require((_amount + totalSupply()) <= _maxSupply, "Xpie::mint: amount + totalSupply exceeds maxSupply");
+
         super.mint(_to, _amount);
+
         _moveDelegates(address(0), delegates[_to], _amount);
-    }
+        
+    } //end 
+
+
+    /**
+     * @dev updateMintCap setting to update the mint cap so that if required by community it can be voted upon
+     * @param newCap the number you need to set to
+     */
+     function setMintCap(uint newCap) external {
+         require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to set mint cap");
+         _mintCap = newCap;
+     }
 
 
     function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
