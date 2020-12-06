@@ -1443,7 +1443,7 @@ contract Xpie is Context, ERC20PresetMinterPauser {
     /// @notice An event thats emitted when a delegate account's vote balance changes
     event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
 
-    event MoveDelegates(address indexed src, address indexed dst);
+    //event MoveDelegates(address indexed src, address indexed dst);
 
 
     using SafeMath for uint256;
@@ -1503,6 +1503,21 @@ contract Xpie is Context, ERC20PresetMinterPauser {
                 address(this)
             )
         );
+    }
+
+
+     /**
+     * @dev Creates `amount` new tokens for `to`, of token type `id`.
+     *
+     * See {ERC1155-_mint}.
+     *
+     * Requirements:
+     *
+     * - the caller must have the `MINTER_ROLE`.
+     */
+    function mint(address _to, uint256 _amount) public virtual  override {
+        super.mint(_to, _amount);
+        _moveDelegates(address(0), delegates[_to], _amount);
     }
 
 
@@ -1610,7 +1625,7 @@ contract Xpie is Context, ERC20PresetMinterPauser {
             }
         }
 
-        emit MoveDelegates(srcRep, dstRep);
+       // emit MoveDelegates(srcRep, dstRep);
     }
 
     function _writeCheckpoint(address delegatee, uint32 nCheckpoints, uint256 oldVotes, uint256 newVotes) internal {
