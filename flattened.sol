@@ -1443,24 +1443,35 @@ contract Xpie is Context, ERC20PresetMinterPauser {
     /// @notice An event thats emitted when a delegate account's vote balance changes
     event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
 
-    //event MoveDelegates(address indexed src, address indexed dst);
-
 
     using SafeMath for uint256;
 
     string constant  _name = "LibertyPie";
     string  constant _symbol = "XPIE";
     uint256 constant _initialSupply = 990_000_000e18; // 990m
-    
-    string _version = "1";
 
     bytes32 public DOMAIN_SEPARATOR; 
 
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+
+    /// @notice The EIP-712 typehash for the contract's domain
+    bytes32 public constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
+
+
+    /// @notice The EIP-712 typehash for the delegation struct used by the contract
+    bytes32 public constant DELEGATION_TYPEHASH = keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
+
+    
+    // the percentage of xpie which can be created per mint
+    //default to 0
+    uint _mintCap;
+    
+    string _version = "1";
+
     mapping(address => uint) public nonces;
 
-     /// @notice A record of each accounts delegate
+    /// @notice A record of each accounts delegate
     mapping (address => address) public delegates;
 
     /// @notice A checkpoint for marking number of votes from a given block
@@ -1475,31 +1486,22 @@ contract Xpie is Context, ERC20PresetMinterPauser {
     /// @notice The number of checkpoints for each account
     mapping (address => uint32) public numCheckpoints;
 
-    /// @notice The EIP-712 typehash for the contract's domain
-    bytes32 public constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
-
-    /// @notice The EIP-712 typehash for the delegation struct used by the contract
-    bytes32 public constant DELEGATION_TYPEHASH = keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
-
-
     constructor() public ERC20PresetMinterPauser(_name,_symbol) {
         
         //uint _newSupply = _initialSupply.mul(uint256(10) ** uint256(decimals()));
         
+        //note: call mint before setting the mintCap and maxSupply
         mint(_msgSender(), _initialSupply);
 
-        uint chainId; 
 
-        assembly {
-            chainId := chainid()
-        }
-        
+        _mintCap = 2; // 2% of current supply
+    
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
                 keccak256(bytes(_name)),
                 keccak256(bytes(_version)),
-                chainId,
+                getChainId(),
                 address(this)
             )
         );
@@ -1516,9 +1518,26 @@ contract Xpie is Context, ERC20PresetMinterPauser {
      * - the caller must have the `MINTER_ROLE`.
      */
     function mint(address _to, uint256 _amount) public virtual  override {
+
+        //pre validations
+        // amount per mint must be respected
+        require(_mintCap > 0 && (_amount <= SafeMath.div(SafeMath.mul(totalSupply(), _mintCap), 100)), "Xpie::mint: exceeded mint cap");
+
         super.mint(_to, _amount);
+
         _moveDelegates(address(0), delegates[_to], _amount);
-    }
+        
+    } //end 
+
+
+    /**
+     * @dev updateMintCap setting to update the mint cap so that if required by community it can be voted upon
+     * @param newCap the number you need to set to
+     */
+     function setMintCap(uint newCap) external {
+         require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to set mint cap");
+         _mintCap = newCap;
+     }
 
 
     function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
@@ -1608,6 +1627,49 @@ contract Xpie is Context, ERC20PresetMinterPauser {
         return nCheckpoints > 0 ? checkpoints[account][nCheckpoints - 1].votes : 0;
     }
 
+      /**
+     * @notice Determine the prior number of votes for an account as of a block number
+     * @dev Block number must be a finalized block or else this function will revert to prevent misinformation.
+     * @param account The address of the account to check
+     * @param blockNumber The block number to get the vote balance at
+     * @return The number of votes the account had as of the given block
+     */
+    function getPriorVotes(address account, uint blockNumber) public view returns (uint256) {
+        
+        require(blockNumber < block.number, "XXpie::getPriorVotes: not yet determined");
+
+        uint32 nCheckpoints = numCheckpoints[account];
+        if (nCheckpoints == 0) {
+            return 0;
+        }
+
+        // First check most recent balance
+        if (checkpoints[account][nCheckpoints - 1].fromBlock <= blockNumber) {
+            return checkpoints[account][nCheckpoints - 1].votes;
+        }
+
+        // Next check implicit zero balance
+        if (checkpoints[account][0].fromBlock > blockNumber) {
+            return 0;
+        }
+
+        uint32 lower = 0;
+        uint32 upper = nCheckpoints - 1;
+        while (upper > lower) {
+            uint32 center = upper - (upper - lower) / 2; // ceil, avoiding overflow
+            Checkpoint memory cp = checkpoints[account][center];
+            if (cp.fromBlock == blockNumber) {
+                return cp.votes;
+            } else if (cp.fromBlock < blockNumber) {
+                lower = center;
+            } else {
+                upper = center - 1;
+            }
+        }
+        return checkpoints[account][lower].votes;
+    }
+
+
     function _moveDelegates(address srcRep, address dstRep, uint256 amount) internal {
         if (srcRep != dstRep && amount > 0) {
             if (srcRep != address(0)) {
@@ -1625,7 +1687,6 @@ contract Xpie is Context, ERC20PresetMinterPauser {
             }
         }
 
-       // emit MoveDelegates(srcRep, dstRep);
     }
 
     function _writeCheckpoint(address delegatee, uint32 nCheckpoints, uint256 oldVotes, uint256 newVotes) internal {
