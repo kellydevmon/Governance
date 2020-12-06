@@ -23,11 +23,11 @@ contract GovernorAlpha {
 
     /// @notice The number of votes in support of a proposal required in order for a quorum to be reached and for a vote to succeed
     // XXX: function quorumVotes() public pure returns (uint) { return 400000e18; } // 400,000 = 4% of Comp
-    function quorumVotes() public view returns (uint) { return (xpie.totalSupply() * 0.05); } // 5% of Supply
+    function quorumVotes() public view returns (uint) { return ( 495_000_000e18 ); } // 5% of Supply
 
     /// @notice The number of votes required in order for a voter to become a proposer
     // function proposalThreshold() public pure returns (uint) { return 100000e18; } // 100,000 = 1% of Comp
-    function proposalThreshold() public view returns (uint) { return (xpie.totalSupply() * 0.01); } // 1% of Supply
+    function proposalThreshold() public view returns (uint) { return (9_900_000e18); } // 1% of Supply
 
     /// @notice The maximum number of actions that can be included in a proposal
     function proposalMaxOperations() public pure returns (uint) { return 10; } // 10 actions
