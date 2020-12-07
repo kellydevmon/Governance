@@ -21,7 +21,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "flatten": "npx solidity-flattener contracts/Xpie.sol > flattened.sol"
+    "flatten": "npx solidity-flattener contracts/Xpie.sol > flattened.sol",
+    "compile": "truffle compile && npx solidity-flattener contracts/Xpie.sol > flattened/Xpie.sol"
   },
   "repository": {
     "type": "git",

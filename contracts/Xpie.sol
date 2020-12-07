@@ -19,6 +19,7 @@ contract Xpie is Context, ERC20PresetMinterPauser {
     string  constant _symbol = "XPIE";
     uint256 constant _initialSupply = 990_000_000e18; // 990m
 
+
     bytes32 public DOMAIN_SEPARATOR; 
 
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
@@ -33,8 +34,7 @@ contract Xpie is Context, ERC20PresetMinterPauser {
 
     
     // the percentage of xpie which can be created per mint
-    //default to 0
-    uint _mintCap;
+    uint256 _mintCap = 2; // 2% of current totalSupply
     
     string _version = "1";
 
@@ -58,12 +58,14 @@ contract Xpie is Context, ERC20PresetMinterPauser {
     constructor() public ERC20PresetMinterPauser(_name,_symbol) {
         
         //uint _newSupply = _initialSupply.mul(uint256(10) ** uint256(decimals()));
-        
+
         //note: call mint before setting the mintCap and maxSupply
-        mint(_msgSender(), _initialSupply);
+        //user super.mint to escape _mintCap's limit
+        super.mint(_msgSender(), _initialSupply);
+        
+        //required for delegations
+        _moveDelegates(address(0), delegates[_msgSender()], _initialSupply);
 
-
-        _mintCap = 2; // 2% of current supply
     
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
@@ -74,7 +76,8 @@ contract Xpie is Context, ERC20PresetMinterPauser {
                 address(this)
             )
         );
-    }
+
+    } //end fun
 
 
      /**
@@ -90,7 +93,8 @@ contract Xpie is Context, ERC20PresetMinterPauser {
 
         //pre validations
         // amount per mint must be respected
-        require(_mintCap > 0 && (_amount <= SafeMath.div(SafeMath.mul(totalSupply(), _mintCap), 100)), "Xpie::mint: exceeded mint cap");
+        // hasInitiated is needed as it will prevent this check on deploy time
+        require(_amount <= SafeMath.div(SafeMath.mul(totalSupply(), _mintCap), 100), "Xpie::mint: exceeded mint cap");
 
         super.mint(_to, _amount);
 
