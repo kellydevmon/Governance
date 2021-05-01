@@ -13,7 +13,7 @@ pragma solidity ^0.6.0;
  *
  * - Elements are added, removed, and checked for existence in constant time
  * (O(1)).
- * - Elements are enumerated in O(n). No guarantees are made on the ordering.
+ * - Elements are enumerated in O(n). No guarantees are made on the ordering. 
  *
  * ```
  * contract Example {
