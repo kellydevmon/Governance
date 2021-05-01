@@ -15,7 +15,7 @@ contract Xpie is Context, ERC20PresetMinterPauser {
 
     using SafeMath for uint256;
 
-    string constant  _name = "LibertyPie";
+    string constant  _name = "LibertyPie"; 
     string  constant _symbol = "XPIE";
     uint256 constant _initialSupply = 990_000_000e18; // 990m
 
