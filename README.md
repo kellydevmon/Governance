@@ -1,3 +1,3 @@
-# LibertyPie Governance Token XPIE
+# LifeFire Governance Token FEI
 This repository contains contracts for the LibertyPie Governance Token \
 Website: https://lifefire.onlinr
